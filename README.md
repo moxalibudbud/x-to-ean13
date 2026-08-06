@@ -17,6 +17,28 @@ Compiles a binary named `x-to-ean13` in the current directory:
 go build -o x-to-ean13 .
 ```
 
+### Build for Windows
+
+Go cross-compiles out of the box, so you can build a Windows binary from macOS,
+Linux, or Windows itself by setting `GOOS`/`GOARCH`:
+
+```sh
+# amd64 (most PCs)
+GOOS=windows GOARCH=amd64 go build -o x-to-ean13-amd64.exe .
+
+# arm64 (Windows on Arm)
+GOOS=windows GOARCH=arm64 go build -o x-to-ean13-arm64.exe .
+
+# 386 (32-bit)
+GOOS=windows GOARCH=386 go build -o x-to-ean13-386.exe .
+```
+
+On native Windows (PowerShell or `cmd.exe`), just run:
+
+```powershell
+go build -o x-to-ean13.exe .
+```
+
 ## Run without building (compile + run in one step)
 
 ```sh
