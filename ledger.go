@@ -6,6 +6,7 @@ import (
 	"io"
 	"os"
 	"sort"
+	"strings"
 )
 
 // Ledger is a persistent, append-only allocation table mapping arbitrary keys
@@ -34,9 +35,12 @@ var ledgerHeader = []string{"word", "ean13"}
 
 // LoadLedger reads the ledger at path. A missing file yields an empty ledger
 // for prefix. An existing file is rejected if it contains a duplicate key, a
-// duplicate code, a code that fails ValidateEAN13, or a code that was not
-// built from prefix (which usually means the ledger belongs to a different
-// -prefix run).
+// duplicate code, or a code that fails ValidateEAN13.
+//
+// A code that does not start with prefix is kept as an externally assigned
+// barcode (for example a manufacturer EAN recorded against a SKU). It is
+// checked for duplicates like any other code but does not consume an item
+// reference, since it could never collide with a code built from prefix.
 func LoadLedger(path, prefix string) (*Ledger, error) {
 	if err := ValidateCompanyPrefix(prefix); err != nil {
 		return nil, err
@@ -49,6 +53,8 @@ func LoadLedger(path, prefix string) (*Ledger, error) {
 		used:     make(map[uint64]bool),
 		capacity: ItemRefCapacity(prefix),
 	}
+
+	seenCodes := make(map[string]bool)
 
 	f, err := os.Open(path)
 	if os.IsNotExist(err) {
@@ -92,16 +98,20 @@ func LoadLedger(path, prefix string) (*Ledger, error) {
 		if !ValidateEAN13(code) {
 			return nil, fmt.Errorf("ledger %s: %q has an invalid check digit for key %q", path, code, key)
 		}
-		itemRef, err := ItemRefOf(prefix, code)
-		if err != nil {
-			return nil, fmt.Errorf("ledger %s: code %q for key %q: %w", path, code, key, err)
-		}
-		if l.used[itemRef] {
+		if seenCodes[code] {
 			return nil, fmt.Errorf("ledger %s: duplicate code %q", path, code)
+		}
+		seenCodes[code] = true
+
+		if strings.HasPrefix(code, prefix) {
+			itemRef, err := ItemRefOf(prefix, code)
+			if err != nil {
+				return nil, fmt.Errorf("ledger %s: code %q for key %q: %w", path, code, key, err)
+			}
+			l.used[itemRef] = true
 		}
 
 		l.byKey[key] = code
-		l.used[itemRef] = true
 	}
 
 	return l, nil

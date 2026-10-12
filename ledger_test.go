@@ -143,16 +143,40 @@ func TestLedger_ExhaustionErrors(t *testing.T) {
 	}
 }
 
-func TestLedger_LoadRejectsPrefixMismatch(t *testing.T) {
+func TestLedger_LoadKeepsForeignPrefixCodes(t *testing.T) {
 	path := filepath.Join(t.TempDir(), "ledger.csv")
-	code, err := BuildEAN13("200", 1)
+	own, err := BuildEAN13("200", 0)
 	if err != nil {
 		t.Fatalf("BuildEAN13 setup failed: %v", err)
 	}
-	writeLedgerFile(t, path, [][2]string{{"widget", code}})
+	// A real manufacturer barcode: valid check digit, not built from prefix 200.
+	foreign := "5901234123457"
+	writeLedgerFile(t, path, [][2]string{{"widget", foreign}, {"gadget", own}})
 
-	if _, err := LoadLedger(path, "250"); err == nil {
-		t.Error("LoadLedger with a mismatched prefix = nil error, want error")
+	l, err := LoadLedger(path, "200")
+	if err != nil {
+		t.Fatalf("LoadLedger with a foreign-prefix code unexpected error: %v", err)
+	}
+
+	got, _, err := l.Allocate("widget")
+	if err != nil || got != foreign {
+		t.Errorf("Allocate(\"widget\") = %q, %v; want the stored %q", got, err, foreign)
+	}
+	fresh, isNew, err := l.Allocate("new-item")
+	if err != nil || !isNew {
+		t.Fatalf("Allocate(\"new-item\") = %q, isNew=%v, err=%v", fresh, isNew, err)
+	}
+	if fresh == own || fresh == foreign {
+		t.Errorf("Allocate(\"new-item\") = %q, collides with an existing code", fresh)
+	}
+}
+
+func TestLedger_LoadRejectsDuplicateForeignCode(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "ledger.csv")
+	writeLedgerFile(t, path, [][2]string{{"widget", "5901234123457"}, {"gadget", "5901234123457"}})
+
+	if _, err := LoadLedger(path, "200"); err == nil {
+		t.Error("LoadLedger with a duplicate foreign code = nil error, want error")
 	}
 }
 
