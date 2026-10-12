@@ -16,3 +16,6 @@ Example:
 ```sh
 ./x-to-ean13 -header -prefix 200 words.csv
 # ean13 file generated. N row(s) to words.ean13.csv (N newly allocated, 0 reused from words.ledger.csv)
+```
+
+A ledger can mix codes with different prefixes. See "Codes with a different prefix" in README.md.

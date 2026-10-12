@@ -100,8 +100,24 @@ new.ledger.csv` — and every barcode already handed out (printed on labels,
 stored in another system) will be preserved exactly, with only new words
 getting new codes.
 
-Changing `-prefix` between runs against the same ledger is rejected: the
-ledger is tied to the prefix it was built with.
+#### Codes with a different prefix
+
+A ledger may hold codes that do not start with the `-prefix` you pass — for
+example real manufacturer barcodes (`5901...`) recorded against a SKU, or codes
+issued earlier under another internal prefix. The loader keeps them as they
+are:
+
+- They are still checked for a valid check digit and for duplicate codes.
+- They are never reissued to another word, and a word already in the ledger
+  always gets its stored code back, whatever `-prefix` you pass.
+- They do not use up an item reference, because they can never collide with a
+  code built from the current prefix.
+
+This means you can switch to a new prefix for future words (e.g. `-prefix 201`)
+and keep using the same ledger. Words allocated before the switch keep their
+codes, and new words get the next unused item reference under the new prefix.
+Pick a prefix no existing printed code uses, so retired codes can never be
+reissued.
 
 ## Test
 
